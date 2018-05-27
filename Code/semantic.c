@@ -476,7 +476,7 @@ FieldList Dec(Node *n,Type type,int from)
 }
 
 /* Expressions */
-Type Exp(Node *n)
+Type Exp(Node *n, Operand place)
 {
   if (n==NULL) return NULL;
 
@@ -700,6 +700,10 @@ Type Exp(Node *n)
     type->kind = BASIC;
     type->u.basic = TYPE_INT;
     type->assign = RIGHT;
+
+    place->kind=CONSTANT;
+    place->u.value=firstChild->text;
+
     return type;
   }
   else if (strcmp(firstChild->type,"FLOAT")==0)
@@ -709,6 +713,10 @@ Type Exp(Node *n)
     type->kind = BASIC;
     type->u.basic = TYPE_FLOAT;
     type->assign = RIGHT;
+
+    place->kind=CONSTANT;
+    place->u.value=firstChild->text;
+
     return type;
   }
   return NULL;

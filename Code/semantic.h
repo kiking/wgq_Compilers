@@ -3,6 +3,7 @@
 
 #include "syntaxtree.h"
 #include "stdbool.h"
+#include "intercode.h"
 
 #define FROM_VARIABLE 1
 #define FROM_FIELD 2
@@ -73,8 +74,9 @@ FieldList Def(Node *n, int from);
 FieldList DecList(Node *n, Type type,int from);
 FieldList Dec(Node *n, Type type,int from);
 
-Type Exp(Node *n);
-bool Args(Node *n, FieldList param);
+Type Exp(Node *n, Operand place);
+Type Exp_Cond(Node *n, Operand label_true, Operand label_false);
+bool Args(Node *n, FieldList param, Operand arg_list);
 
 void ErrorHandle(int type, int line, char *info);
 
