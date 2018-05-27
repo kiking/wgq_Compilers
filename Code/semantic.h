@@ -4,18 +4,16 @@
 #include "syntaxtree.h"
 #include "stdbool.h"
 
-#define FROM_VARIABLE 3
+#define FROM_VARIABLE 1
 #define FROM_FIELD 2
-#define FROM_PARAM 1
 
 typedef struct Type_* Type;
-typedef struct Structure_* Structure;
 typedef struct FieldList_* FieldList;
 typedef struct Function_* Function;
 
 struct Type_
 {
-  enum { BASIC, ARRAY, STRUCTURE, FUNCTION } kind;
+  enum { BASIC, ARRAY, STRUCTURE } kind;
   union{
     //basic type
     int basic;
@@ -24,18 +22,10 @@ struct Type_
     struct {Type elem; int size; }  array;
 
     //structure information
-    Structure structure;
+    struct {char *name; FieldList domain; } structure;
 
-    //function information
-    Function function;
   } u;
   enum { LEFT,RIGHT,BOTH } assign;
-};
-
-struct Structure_
-{
-  char *name;
-  FieldList domain;
 };
 
 struct FieldList_
@@ -55,8 +45,9 @@ struct Function_
   FieldList param;
 };
 
+
 bool typeEqual(Type lhs,Type rhs);
-bool structEqual(Structure lhs, Structure rhs);
+bool structEqual(FieldList lhs, FieldList rhs);
 
 void Program(Node* root);
 void ExtDefList(Node* n);
@@ -65,8 +56,8 @@ void ExtDecList(Node *n, Type type);
 
 Type Specifier(Node *n);
 Type StructSpecifier(Node *n);
-Type OptTag(Node *n);
-Type Tag(Node *n);
+char *OptTag(Node *n);
+char *Tag(Node *n);
 
 FieldList VarDec(Node *n,Type type,int from);
 void FunDec(Node *n,Type type);

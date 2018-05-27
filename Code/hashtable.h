@@ -5,27 +5,29 @@
 #include "syntaxtree.h"
 #include <string.h>
 
-#define HASH_SIZE 1024
+#define HASH_SIZE 2048
 
 typedef struct Entry_
 {
   char *name;
-  Type type;
+  enum { VARIABLE, STRUCT, FUNCTION } ekind;
+  union
+  {
+    Type type;
+    Function function;
+  }e;
   struct Entry_ *next;
 } Entry;
 
 extern Entry *hashTable[HASH_SIZE];
 
 void initTable();
-Type getTable(char *name);
+Entry* getTable(char *name);
 
 void varInsertTable(FieldList value);
-bool varExit(FieldList var);
 
 void funcInsertTable(Function func);
-bool funcExist(Function func);
 
-void structInsertTable(Structure structure);
-bool structExit(Structure structure);
+void structInsertTable(char *name, FieldList domain);
 
 #endif
