@@ -20,6 +20,28 @@ void initTable()
   {
     hashTable[i]=NULL;
   }
+  Function read=malloc(sizeof(struct Function_));
+  read->name=malloc(20);
+	strcpy(read->name,"read");
+  read->retype=malloc(sizeof(struct Type_));
+	read->retype->kind=BASIC;
+	read->retype->u.basic=TYPE_INT;
+	read->param=NULL;
+	funcInsertTable(read);
+	Function write=malloc(sizeof(struct Function_));
+  write->name=malloc(20);
+	strcpy(write->name,"write");
+  write->retype=malloc(sizeof(struct Type_));
+	write->retype->kind=BASIC;
+	write->retype->u.basic=TYPE_INT;
+  write->param=malloc(sizeof(struct FieldList_));
+	write->param->name = malloc(16);
+	strcpy(write->param->name,"write_param");
+  write->param->type=malloc(sizeof(struct Type_));
+	write->param->type->kind = BASIC;
+	write->param->type->u.basic = TYPE_INT;
+	write->param->tail=NULL;
+	funcInsertTable(write);
 }
 
 void varInsertTable(FieldList value)

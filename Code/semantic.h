@@ -74,9 +74,11 @@ FieldList Def(Node *n, int from);
 FieldList DecList(Node *n, Type type,int from);
 FieldList Dec(Node *n, Type type,int from);
 
-Type Exp(Node *n, Operand place);
-Type Exp_Cond(Node *n, Operand label_true, Operand label_false);
-bool Args(Node *n, FieldList param, Operand arg_list);
+Type Exp(Node *n, Operand *place);
+Type Exp_Cond(Node *n, Operand *label_true, Operand *label_false);
+bool Args(Node *n, FieldList param, Operand *arg_list);
+
+int typeSize(Type type);
 
 void ErrorHandle(int type, int line, char *info);
 
