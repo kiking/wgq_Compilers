@@ -27,10 +27,6 @@ int main(int argc, char** argv)
 	yyrestart(f);
 	yyparse();
 
-	zeroStr = malloc(sizeof(char[2]));
-	strcpy(zeroStr, "0");
-	oneStr = malloc(sizeof(char[2]));
-	strcpy(oneStr, "1");
 	neStr = malloc(sizeof(char[3]));
 	strcpy(neStr, "!=");
 
