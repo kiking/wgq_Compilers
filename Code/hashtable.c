@@ -28,6 +28,7 @@ void initTable()
 	read->retype->u.basic=TYPE_INT;
 	read->param=NULL;
 	funcInsertTable(read);
+  
 	Function write=malloc(sizeof(struct Function_));
   write->name=malloc(20);
 	strcpy(write->name,"write");
@@ -35,7 +36,7 @@ void initTable()
 	write->retype->kind=BASIC;
 	write->retype->u.basic=TYPE_INT;
   write->param=malloc(sizeof(struct FieldList_));
-	write->param->name = malloc(16);
+	write->param->name = malloc(20);
 	strcpy(write->param->name,"write_param");
   write->param->type=malloc(sizeof(struct Type_));
 	write->param->type->kind = BASIC;

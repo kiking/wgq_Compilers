@@ -2,7 +2,7 @@
 #include "hashtable.h"
 #include "syntaxtree.h"
 #include <string.h>
-#define IR_DEBUG 1
+//#define IR_DEBUG 1
 
 /* High-level Definitions */
 void Program(Node* root)
@@ -81,7 +81,7 @@ void ExtDecList(Node *n,Type type)
       InterCode *deccode=newInterCodedec(IR_DEC,op,typeSize(fl->type));
 			insertCode(deccode);
       Operand *v=newVariable(fl->name);
-      InterCode *addrcode=newInterCodeassign(IR_ADDRESS,op,v);
+      InterCode *addrcode=newInterCodeassign(IR_ADDRESS,v,op);
 			insertCode(addrcode);
 		}
   }
@@ -245,37 +245,32 @@ FieldList VarDec(Node *n,Type type,int from)
       }
        return NULL;
     }
-     else
-     {
-       if(type->kind==STRUCTURE && from==FROM_FIELD)
-       {
-         Operand *op=newTempvar();
-				InterCode *deccode=malloc(sizeof(InterCode));
-				deccode->kind = IR_DEC;
-				deccode->u.dec.op = op;
-				deccode->u.dec.size = typeSize(type);
+    else
+    {
+      if(type->kind==STRUCTURE && from==FROM_FIELD)
+      {
+        Operand *op=newTempvar();
+        InterCode *deccode=newInterCodedec(IR_DEC,op,typeSize(type));
 				insertCode(deccode);
         Operand *v=newVariable(firstChild->text);
-				InterCode *addrcode=malloc(sizeof(InterCode));
-				addrcode->kind = IR_ADDRESS;
-				addrcode->u.assign.left = v;
-				addrcode->u.assign.right = op;
+        InterCode *addrcode=newInterCodeassign(IR_ADDRESS,v,op);
 				insertCode(addrcode);
 			}
-       varInsertTable(varDec);
-     }
+      varInsertTable(varDec);
+    }
      return varDec;
-   }
+  }
    //VarDec->VarDec LB INT RB
-   else if (strcmp(firstChild->type,"VarDec")==0)
-   {
+  else if (strcmp(firstChild->type,"VarDec")==0)
+  {
      Type varDec = (Type)malloc(sizeof(struct Type_));
      varDec->kind = ARRAY;
   	 varDec->u.array.size = (int)strtol(firstChild->nextSibling->nextSibling->text,NULL,10);
  		 varDec->u.array.elem = type;
 
  		 return VarDec(firstChild, varDec, from);
-   }
+  }
+  else exit(-1); 
 }
 
 void FunDec(Node *n,Type type)
@@ -308,17 +303,13 @@ void FunDec(Node *n,Type type)
   {
     funcInsertTable(func);
     Operand *funcop=newFunction(func->name);
-    InterCode *code=malloc(sizeof(InterCode));
-		code->kind = IR_FUNCTION;
-		code->u.sinop.op = funcop;
+    InterCode *code=newInterCodesinop(IR_FUNCTION,funcop);
 		insertCode(code);		//funtion  :
     FieldList param=func->param;
     while(param!=NULL)
 		{
       Operand *pop=newVariable(param->name);
-			InterCode *pcode = malloc(sizeof(InterCode));
-			pcode->kind = IR_PARAM;
-			pcode->u.sinop.op=pop;
+      InterCode *pcode=newInterCodesinop(IR_PARAM,pop);
 			insertCode(pcode);
 			param=param->tail;
 		}
@@ -395,7 +386,6 @@ void StmtList(Node *n,Type retype)
     Stmt(n->firstChild,retype);
     StmtList(n->firstChild->nextSibling,retype);
   }
-
 }
 
 void Stmt(Node *n,Type retype)
@@ -426,72 +416,61 @@ void Stmt(Node *n,Type retype)
     {
       ErrorHandle(8, firstChild->line, NULL);
     }
-    InterCode *code = malloc(sizeof(InterCode));
-		code->kind = IR_RETURN;
-		code->u.sinop.op = op;
+    InterCode *code=newInterCodesinop(IR_RETURN,op);
 		insertCode(code);
   }
   //Stmt->IF LP Exp RP Stmt (ELSE Stmt)
   //Stmt->WHILE LP Exp RP Stmt
   else if (strcmp(firstChild->type,"IF")==0)
   {
-    firstChild=firstChild->nextSibling->nextSibling;
-    Operand *lb1=newLabel();
+    Operand *lb1 = newLabel();
     Operand *lb2 = newLabel();
+    firstChild=firstChild->nextSibling->nextSibling;
 		Type expType = Exp_Cond(firstChild,lb1,lb2);
-		InterCode *code1=malloc(sizeof(InterCode));
-		code1->kind=IR_LABEL;
-		code1->u.sinop.op=lb1;
+    InterCode *code1=newInterCodesinop(IR_LABEL,lb1);
 		insertCode(code1);
 		firstChild = firstChild->nextSibling->nextSibling;
 		Stmt(firstChild, retype);
-		InterCode *lb2code = malloc(sizeof(InterCode));
-		lb2code->kind = IR_LABEL;
-		lb2code->u.sinop.op = lb2;
+    InterCode *lb2code=newInterCodesinop(IR_LABEL,lb2);
 		firstChild = firstChild->nextSibling;
     if (firstChild==NULL)
     {
       insertCode(lb2code);
-      return ;
     }
-    Operand *lb3 = newLabel();
-		InterCode *code2=malloc(sizeof(InterCode));
-		code2->kind = IR_GOTO;
-		code2->u.sinop.op = lb3;
-		insertCode(code2);			//goto label3
-		insertCode(lb2code);		//label2
-    firstChild=firstChild->nextSibling;
-		Stmt(firstChild, retype);
-		InterCode *lb3code=malloc(sizeof(InterCode));
-		lb3code->kind = IR_LABEL;
-		lb3code->u.sinop.op = lb3;
-		insertCode(lb3code);		//label3
-    
+    else
+    {
+      Operand *lb3 = newLabel();
+      InterCode *code2=newInterCodesinop(IR_GOTO,lb3);
+		  insertCode(code2);			//goto label3
+		  insertCode(lb2code);		//label2
+      firstChild=firstChild->nextSibling;
+		  Stmt(firstChild, retype);
+      InterCode *lb3code=newInterCodesinop(IR_LABEL,lb3);
+		  insertCode(lb3code);		//label3
+    }
   }
   else if (strcmp(firstChild->type,"WHILE")==0)
   {
     Operand *lb1=newLabel();
     Operand *lb2=newLabel();
     Operand *lb3=newLabel();
-		firstChild=firstChild->nextSibling->nextSibling;
-		InterCode *lb1code = malloc(sizeof(InterCode));
-		lb1code->kind = IR_LABEL;
-		lb1code->u.sinop.op = lb1;
+		
+    InterCode *lb1code=newInterCodesinop(IR_LABEL,lb1);
 		insertCode(lb1code);		//label 1
+
+    firstChild=firstChild->nextSibling->nextSibling;
 		Exp_Cond(firstChild,lb2,lb3);	//code1
-		InterCode *lb2code=malloc(sizeof(InterCode));
-		lb2code->kind = IR_LABEL;
-		lb2code->u.sinop.op = lb2;
+
+    InterCode *lb2code=newInterCodesinop(IR_LABEL,lb2);
 		insertCode(lb2code);		//label 2
+
 		firstChild = firstChild->nextSibling->nextSibling;
 		Stmt(firstChild, retype);
-		InterCode *gotolb1 = malloc(sizeof(InterCode));
-		gotolb1->kind = IR_GOTO;
-		gotolb1->u.sinop.op = lb1;
+
+    InterCode *gotolb1=newInterCodesinop(IR_GOTO,lb1);
 		insertCode(gotolb1);		//goto label1
-		InterCode *lb3code = malloc(sizeof(InterCode));
-		lb3code->kind = IR_LABEL;
-		lb3code->u.sinop.op = lb3;
+
+    InterCode *lb3code=newInterCodesinop(IR_LABEL,lb3);
 		insertCode(lb3code);		//label3
   }
 }
@@ -517,7 +496,8 @@ FieldList DefList(Node *n,int from)
   {
  		defList = DefList(firstChild->nextSibling, from);
  	}
-  else {
+  else
+  {
     FieldList tmp = defList;
     while (tmp->tail != NULL)
     {
@@ -594,18 +574,12 @@ FieldList Dec(Node *n,Type type,int from)
     //array space
     Operand *op=newTempvar();
 
-		InterCode *deccode=malloc(sizeof(InterCode));
-		deccode->kind=IR_DEC;
-		deccode->u.dec.op=op;
-		deccode->u.dec.size=typeSize(dec->type);
+    InterCode *deccode=newInterCodedec(IR_DEC,op,typeSize(dec->type));
 		insertCode(deccode);
 
     Operand *v=newVariable(dec->name);
 
-		InterCode *addrcode=malloc(sizeof(InterCode));
-		addrcode->kind = IR_ADDRESS;
-		addrcode->u.assign.left = v;
-		addrcode->u.assign.right = op;
+    InterCode *addrcode=newInterCodeassign(IR_ADDRESS,v,op);
 		insertCode(addrcode);
   }
 
@@ -630,11 +604,8 @@ FieldList Dec(Node *n,Type type,int from)
   if(place->kind!=VARIABLE||place->u.name!=dec->name)
 	{
     Operand *left=newVariable(dec->name);
-		InterCode *asscode=malloc(sizeof(InterCode));
-		asscode->kind=IR_ASSIGN;
-		asscode->u.assign.left=left;
-		asscode->u.assign.right=place;
-		insertCode(asscode);
+    InterCode *ass=newInterCodeassign(IR_ASSIGN,left,place);
+		insertCode(ass);
 	}
   return dec;
 }
@@ -659,7 +630,6 @@ Type Exp(Node *n, Operand *place)
 
       Operand *leftOp=newTempvar();
       Operand *rightOp=newTempvar();
-      int rightOpNO=rightOp->u.var_no;
 
       //判断表达式左边是否为左值
       Type lhs = Exp(firstChild,leftOp);
@@ -678,27 +648,47 @@ Type Exp(Node *n, Operand *place)
       }
       else
       {
-        if( !(rightOp->kind==OP_TEMPVAR && rightOp->u.var_no==rightOpNO && (leftOp->kind==OP_TEMPVAR || leftOp->kind==OP_VARIABLE)) )
+        if( !(rightOp->kind==OP_TEMPVAR && (leftOp->kind==OP_TEMPVAR || leftOp->kind==OP_VARIABLE)) )
         {
-          InterCode *assignCode1 = malloc(sizeof(InterCode));
-          assignCode1->kind = IR_ASSIGN;
-					assignCode1->u.assign.left = leftOp;
-					assignCode1->u.assign.right = rightOp;
+          InterCode *assignCode1=newInterCodeassign(IR_ASSIGN,leftOp,rightOp);
 					insertCode(assignCode1);
         }
         else{
 					memcpy(rightOp, leftOp, sizeof(Operand));
 				}
-				if(place!=NULL){
-					InterCode *assignCode2 = malloc(sizeof(InterCode));
-          assignCode2->kind = IR_ASSIGN;
-					assignCode2->u.assign.left = place;
-					assignCode2->u.assign.right = rightOp;
+				if(place!=NULL)
+        {
+          InterCode *assignCode2=newInterCodeassign(IR_ASSIGN,place,rightOp);
 					insertCode(assignCode2);
 				}
         return lhs;
       }
     }
+    /*else if (strcmp(firstChild->nextSibling->type,"AND")==0 ||
+              strcmp(firstChild->nextSibling->type,"OR")==0 ||
+              strcmp(firstChild->nextSibling->type,"RELOP")==0)
+    {
+      Operand *label1=newLabel();
+      Operand *label2=newLabel();
+
+      Operand *zero=newConstant(0);
+      InterCode *code0=newInterCodeassign(IR_ASSIGN,place,zero);
+      if (place!=NULL) insertCode(code0);
+      Type t=Exp_Cond(n,label1,label2);
+
+      InterCode *code1=newInterCodesinop(IR_LABEL,label1);
+      insertCode(code1);
+
+      Operand *onec=newConstant(1);
+      InterCode *code2=newInterCodeassign(IR_ASSIGN,place,onec);
+      if (place!=NULL) insertCode(code2);
+
+      InterCode *code3=newInterCodesinop(IR_LABEL,label2);
+      insertCode(code3);
+
+      t->assign=RIGHT;
+      return t;
+    }*/
     else if (strcmp(firstChild->nextSibling->type,"AND")==0 ||
               strcmp(firstChild->nextSibling->type,"OR")==0 ||
               strcmp(firstChild->nextSibling->type,"RELOP")==0 ||
@@ -720,27 +710,24 @@ Type Exp(Node *n, Operand *place)
       {
         if (place!=NULL)
         {
-          InterCode *calc=malloc(sizeof(InterCode));
+          InterCode *calc=NULL;
           if (strcmp(firstChild->nextSibling->type,"PLUS")==0)
           {
-            calc->kind=IR_ADD;
+            calc=newInterCodebinop(IR_ADD,place,leftOp,rightOp);
           }
           else if (strcmp(firstChild->nextSibling->type,"MINUS")==0)
           {
-            calc->kind=IR_SUB;
+            calc=newInterCodebinop(IR_SUB,place,leftOp,rightOp);
           }
           else if (strcmp(firstChild->nextSibling->type,"STAR")==0)
           {
-            calc->kind=IR_MUL;
+            calc=newInterCodebinop(IR_MUL,place,leftOp,rightOp);
           }
           else if (strcmp(firstChild->nextSibling->type,"DIV")==0)
           {
-            calc->kind=IR_DIV;
+            calc=newInterCodebinop(IR_DIV,place,leftOp,rightOp);
           }
-          else exit(-1);
-          calc->u.binop.op1=leftOp;
-          calc->u.binop.op2=rightOp;
-          calc->u.binop.result=place;
+          else assert(0);
           insertCode(calc);
         }
         Type rtn = (Type)malloc(sizeof(struct Type_));
@@ -777,7 +764,6 @@ Type Exp(Node *n, Operand *place)
 				subscriptOp = newTempvar();
 			}
 
-
       Type arrayNumber = Exp(firstChild->nextSibling->nextSibling,subscriptOp);
       if (arrayNumber==NULL) return NULL;
       if (arrayNumber->kind!=BASIC || arrayNumber->u.basic!=TYPE_INT)
@@ -788,21 +774,13 @@ Type Exp(Node *n, Operand *place)
 
 			Operand *offsetOp=newTempvar();
 
-
 			if(subscipt!=0){
         Operand *wideOp=newConstant(array->u.array.size);
 
-				InterCode *offsetCode = malloc(sizeof(InterCode));
-        offsetCode->kind = IR_MUL;
-				offsetCode->u.binop.op1 = subscriptOp;
-				offsetCode->u.binop.op2 = wideOp;
-				offsetCode->u.binop.result = offsetOp;
+        InterCode *offsetCode=newInterCodebinop(IR_MUL,offsetOp,subscriptOp,wideOp);
 				insertCode(offsetCode);
 
-				InterCode *addrCode = malloc(sizeof(InterCode));
-        addrCode->kind = IR_ADD;
-				addrCode->u.binop.op1 = baseOp;
-				addrCode->u.binop.op2 = offsetOp;
+        InterCode *addrCode=newInterCodebinop(IR_ADD,NULL,baseOp,offsetOp);
 				if(array->u.array.elem->kind==BASIC)
         {
 					Operand *temAddrOp=newTempvar();
@@ -817,9 +795,7 @@ Type Exp(Node *n, Operand *place)
 				insertCode(addrCode);
 			}
 			else{
-				InterCode *addrCode = malloc(sizeof(InterCode));
-        addrCode->kind = IR_ASSIGN;
-				addrCode->u.assign.right = baseOp;
+        InterCode *addrCode=newInterCodeassign(IR_ASSIGN,NULL,baseOp);
 				if(array->u.array.elem->kind==BASIC){
           Operand *temAddrOp=newTempvar();
 					addrCode->u.assign.left = temAddrOp;
@@ -876,10 +852,7 @@ Type Exp(Node *n, Operand *place)
 					}
 					else{
             Operand *offsetOp=newConstant(offset);
-						InterCode *addrCode = malloc(sizeof(InterCode));
-            addrCode->kind = IR_ADD;
-						addrCode->u.binop.op1 = structVarOp;
-						addrCode->u.binop.op2 = offsetOp;
+            InterCode *addrCode=newInterCodebinop(IR_ADD,NULL,structVarOp,offsetOp);
 						if(structure->kind==BASIC)
             {
               Operand *temAddrOp=newTempvar();
@@ -916,11 +889,10 @@ Type Exp(Node *n, Operand *place)
   {
     //Exp->MINUS Exp
 
-    Operand *rightOp=newTempvar();
-    int rightOpNO=rightOp->u.var_no;
+    Operand *t1=newTempvar();
 
     firstChild = firstChild->nextSibling;
-    Type type = Exp(firstChild,rightOp);
+    Type type = Exp(firstChild,t1);
     if (type==NULL) return NULL;
     if (type->kind!=BASIC)
     {
@@ -930,11 +902,7 @@ Type Exp(Node *n, Operand *place)
     Operand *zeroOp=newConstant(0);
     if (place!=NULL)
     {
-      InterCode *minus=malloc(sizeof(InterCode));
-      minus->kind=IR_SUB;
-      minus->u.binop.op1=zeroOp;
-      minus->u.binop.op2=rightOp;
-      minus->u.binop.result=place;
+      InterCode *minus=newInterCodebinop(IR_SUB,place,zeroOp,t1);
       insertCode(minus);
     }
     Type rtn = (Type)malloc(sizeof(struct Type_));
@@ -949,29 +917,19 @@ Type Exp(Node *n, Operand *place)
     Operand *label1=newLabel();
     Operand *label2=newLabel();
 
-    InterCode *code0=malloc(sizeof(InterCode));
-    code0->kind=IR_ASSIGN;
-    code0->u.assign.left=place;
     Operand *zero=newConstant(0);
-    code0->u.assign.right=zero;
+    InterCode *code0=newInterCodeassign(IR_ASSIGN,place,zero);
     if (place!=NULL) insertCode(code0);
     Type t=Exp_Cond(n,label1,label2);
 
-    InterCode *code1=malloc(sizeof(InterCode));
-    code1->kind=IR_LABEL;
-    code1->u.sinop.op=label1;
+    InterCode *code1=newInterCodesinop(IR_LABEL,label1);
     insertCode(code1);
 
-    Operand *cc=newConstant(1);
-    InterCode *code2=malloc(sizeof(InterCode));
-    code2->kind=IR_ASSIGN;
-    code2->u.assign.left=place;
-    code2->u.assign.right=cc;
+    Operand *onec=newConstant(1);
+    InterCode *code2=newInterCodeassign(IR_ASSIGN,place,onec);
     if (place!=NULL) insertCode(code2);
 
-    InterCode *code3=malloc(sizeof(InterCode));
-    code3->kind=IR_LABEL;
-    code3->u.sinop.op=label2;
+    InterCode *code3=newInterCodesinop(IR_LABEL,label2);
     insertCode(code3);
 
     t->assign = RIGHT;
@@ -1025,32 +983,22 @@ Type Exp(Node *n, Operand *place)
         }
         else
         {
-					if(strcmp(func->e.function->name,"read")==0){
-						if(place!=NULL){
-							InterCode *funcCode = malloc(sizeof(InterCode));
-              funcCode->kind = IR_READ;
-							funcCode->u.sinop.op = place;
-							insertCode(funcCode);
-						}
+					if(strcmp(func->e.function->name,"read")==0)
+          {
+            InterCode *funcCode=newInterCodesinop(IR_READ,place);
+						insertCode(funcCode);
 					}
 					else
           {
             Operand *funcOp=newFunction(func->e.function->name);
-						if(place!=NULL){
-							InterCode *funcCode = malloc(sizeof(InterCode));
-              funcCode->kind = IR_CALL;
-							funcCode->u.assign.left = place;
-							funcCode->u.assign.right = funcOp;
+						if(place!=NULL)
+            {
+              InterCode *funcCode=newInterCodeassign(IR_CALL,place,funcOp);
 							insertCode(funcCode);
 						}
 						else
             {
-							Operand *uselessOp = newTempvar();
-
-							InterCode *funcCode = malloc(sizeof(InterCode));
-              funcCode->kind = IR_CALL;
-							funcCode->u.assign.left = uselessOp;
-							funcCode->u.assign.right = funcOp;
+              InterCode *funcCode=newInterCodeassign(IR_CALL,newTempvar(),funcOp);
 							insertCode(funcCode);
 						}
 					}
@@ -1070,9 +1018,7 @@ Type Exp(Node *n, Operand *place)
         {
 					if(strcmp(func->e.function->name,"write")==0)
           {
-						InterCode *funcCode = malloc(sizeof(InterCode));
-            funcCode->kind = IR_WRITE;
-						funcCode->u.sinop.op = argsListHead->next;
+            InterCode *funcCode=newInterCodesinop(IR_WRITE,argsListHead->next);
 						insertCode(funcCode);
 					}
 					else
@@ -1080,29 +1026,21 @@ Type Exp(Node *n, Operand *place)
 						Operand *argsP = argsListHead->next;
 						while(argsP!=NULL)
             {
-							InterCode *argCode = malloc(sizeof(InterCode));
-              argCode->kind = IR_ARG;
-							argCode->u.sinop.op = argsP;
+              InterCode *argCode=newInterCodesinop(IR_ARG,argsP);
 							insertCode(argCode);
 							argsP = argsP->next;
 						}
             Operand *funcOp=newFunction(func->e.function->name);
 						if(place!=NULL)
             {
-							InterCode *funcCode = malloc(sizeof(InterCode));
-              funcCode->kind = IR_CALL;
-							funcCode->u.assign.left = place;
-							funcCode->u.assign.right = funcOp;
+              InterCode *funcCode=newInterCodeassign(IR_CALL,place,funcOp);
 							insertCode(funcCode);
 						}
 						else
             {              
 							Operand *uselessOp = newTempvar();
 
-							InterCode *funcCode = malloc(sizeof(InterCode));
-              funcCode->kind = IR_CALL;
-							funcCode->u.assign.left = uselessOp;
-							funcCode->u.assign.right = funcOp;
+              InterCode *funcCode=newInterCodeassign(IR_CALL,uselessOp,funcOp);
 							insertCode(funcCode);
 						}
 					}
@@ -1164,24 +1102,17 @@ Type Exp_Cond(Node *n,Operand *label_true,Operand *label_false)
       Operand *t1=newTempvar();
       Operand *t2=newTempvar();
 
-			Type tp=Exp(firstChild,t1);	//code1
+			Type tp1=Exp(firstChild,t1);	//code1
 			Type tp2=Exp(firstChild->nextSibling->nextSibling,t2);	//code2
-			if(tp==NULL||tp2==NULL)return NULL;
-			else if((tp->kind==BASIC||tp->kind==FUNCTION)&&(tp2->kind==BASIC||tp2->kind==STRUCTURE)&&tp->u.basic==tp2->u.basic)
+			if(tp1==NULL||tp2==NULL)return NULL;
+			else if((tp1->kind==BASIC||tp1->kind==FUNCTION)&&(tp2->kind==BASIC||tp2->kind==STRUCTURE)&&tp1->u.basic==tp2->u.basic)
 			{
-				InterCode *code3=malloc(sizeof(InterCode));
-				code3->kind=IR_IFGOTO;
-				code3->u.triop.op1=t1;
-				code3->u.triop.relop=firstChild->nextSibling->text;
-				code3->u.triop.op2=t2;
-				code3->u.triop.label=label_true;
+        InterCode *code3=newInterCodetriop(IR_IFGOTO,t1,t2,label_true,firstChild->nextSibling->text);
 				insertCode(code3);		//code3
 
-				InterCode *gotolbf=malloc(sizeof(InterCode));
-				gotolbf->kind=IR_GOTO;
-				gotolbf->u.sinop.op=label_false;
+        InterCode *gotolbf=newInterCodesinop(IR_GOTO,label_false);
 				insertCode(gotolbf);		//goto label false
-				return tp;
+				return tp1;
 			}
 			else
 			{
@@ -1196,9 +1127,7 @@ Type Exp_Cond(Node *n,Operand *label_true,Operand *label_false)
 
 			Type t=Exp_Cond(firstChild,lb1,label_false);	//code1
 
-			InterCode *lb1code=malloc(sizeof(InterCode));
-			lb1code->kind=IR_LABEL;
-			lb1code->u.sinop.op=lb1;
+      InterCode *lb1code=newInterCodesinop(IR_LABEL,lb1);
 			insertCode(lb1code);		//label 1
 
 			Type t2=Exp_Cond(firstChild->nextSibling->nextSibling,label_true,label_false);	//code2
@@ -1219,9 +1148,7 @@ Type Exp_Cond(Node *n,Operand *label_true,Operand *label_false)
 
 			Type t=Exp_Cond(firstChild,label_true,lb1);	//code1
 
-			InterCode *lb1code=malloc(sizeof(InterCode));
-			lb1code->kind=IR_LABEL;
-			lb1code->u.sinop.op=lb1;
+      InterCode *lb1code=newInterCodesinop(IR_LABEL,lb1);
 			insertCode(lb1code);		//label 1
 
 			Type t2=Exp_Cond(firstChild->nextSibling->nextSibling,label_true,label_false);	//code2
@@ -1235,7 +1162,6 @@ Type Exp_Cond(Node *n,Operand *label_true,Operand *label_false)
 			}
 
 		}
-
 	}
 	if(strcmp(firstChild->type,"NOT")==0)	//not
 	{
@@ -1247,18 +1173,11 @@ Type Exp_Cond(Node *n,Operand *label_true,Operand *label_false)
 	}
 	Operand *t1=newTempvar();
 	type=Exp(n,t1);		//code1
-	InterCode *code2=malloc(sizeof(InterCode));
-	code2->kind=IR_IFGOTO;
-	code2->u.triop.op1=t1;
-	code2->u.triop.relop= neStr;
 	Operand *t2=newConstant(0);
-	code2->u.triop.op2=t2;
-	code2->u.triop.label=label_true;
+  InterCode *code2=newInterCodetriop(IR_IFGOTO,t1,t2,label_true,"!=");
 	insertCode(code2);		//code2
 
-	InterCode *gotolbf=malloc(sizeof(InterCode));
-	gotolbf->kind=IR_GOTO;
-	gotolbf->u.sinop.op=label_false;
+  InterCode *gotolbf=newInterCodesinop(IR_GOTO,label_false);
 	insertCode(gotolbf);		//goto label false
 	return type;
 }
@@ -1398,11 +1317,9 @@ bool structEqual(FieldList lhs, FieldList rhs)
 
  int typeSize(Type type)
  {
-	if(type->kind==BASIC||type->kind==FUNCTION)
+	if(type->kind==BASIC)
 	{
-		if(type->u.basic==TYPE_INT)
-			return 4;
-		else return 8;
+		return 4;
 	}
 	else if(type->kind==STRUCTURE)	//struct
 	{

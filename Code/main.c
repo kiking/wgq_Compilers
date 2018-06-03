@@ -27,12 +27,9 @@ int main(int argc, char** argv)
 	yyrestart(f);
 	yyparse();
 
-	neStr = malloc(sizeof(char[3]));
-	strcpy(neStr, "!=");
-
 	if(root != NULL && AError == 0 && BError == 0)
   {
-    printTree(root,0);
+    //printTree(root,0);
     Program(root);
 		printCode(argv[2]);
   }
